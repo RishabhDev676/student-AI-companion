@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import base64
 import importlib
 import json
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from uuid import uuid4
 
@@ -17,6 +16,19 @@ import analytics
 import db
 import security
 from ai_service import AIError, call_ai, keys_configured, remember_insights
+from ui_components import (
+    activity_streak,
+    empty_state,
+    inject_css,
+    metric_row,
+    pill,
+    pretty_date,
+    pretty_dt,
+    render_exam_card,
+    render_week_grid,
+    section_header,
+    snapshot_item,
+)
 
 # Streamlit keeps imported modules in memory across reruns. Reload local
 # helpers so new functions (e.g. db.get_chat) are visible without a full restart.
@@ -27,8 +39,10 @@ security = importlib.reload(security)
 ROOT = Path(__file__).resolve().parent
 ICON_PATH = ROOT / "icon.png"
 APP_NAME = "Ruia Pulse"
-APP_TAGLINE = "Student companion · planner, exams, quizzes"
+APP_TAGLINE = "Planner · exams · quizzes · tutor"
 
+# Wide layout: weekly plan grid, exam lists, and history tables need horizontal
+# room. CSS still caps the main column so lines stay readable on large screens.
 st.set_page_config(
     page_title=APP_NAME,
     page_icon=str(ICON_PATH) if ICON_PATH.exists() else "✦",
@@ -51,131 +65,15 @@ MEMORY_LABELS = {
     "latest_exam_advice": "Revision note",
 }
 
-
-def inject_css() -> None:
-    st.markdown(
-        """
-        <style>
-          .stApp { background: #f6f5f2; color: #1c1c1a; }
-          [data-testid="stHeader"] { background: transparent; }
-          .stAppDeployButton { display: none; }
-          footer { visibility: hidden; }
-          .brand-shell {
-            background: linear-gradient(135deg, #1f1e1d 0%, #4d443d 100%);
-            border-radius: 22px;
-            padding: 1.05rem 1.2rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 14px 30px rgba(35, 29, 24, 0.12);
-          }
-          .brand-shell .brand-title {
-            font-size: 2rem;
-            font-weight: 700;
-            letter-spacing: -0.04em;
-            color: #f7f4ef;
-            margin: 0;
-            line-height: 1.1;
-          }
-          .brand-shell .brand-tag {
-            font-size: 0.9rem;
-            color: #e7dfd5;
-            margin-top: 0.25rem;
-            opacity: 0.95;
-          }
-          .block-container { padding: 1.6rem 2.2rem 8rem; max-width: 1180px; }
-          h1, h2, h3 { font-weight: 560; letter-spacing: -0.03em; color: #171716; }
-          [data-testid="stSidebar"] {
-            background: #efeee8;
-            border-right: 1px solid #e4e1d8;
-          }
-          .stTabs [data-baseweb="tab-list"] {
-            gap: 0.25rem;
-            border-bottom: 1px solid #e4e1d8;
-          }
-          .stTabs [data-baseweb="tab"] {
-            padding: 0.55rem 0.9rem;
-            font-weight: 500;
-          }
-          div[data-testid="stForm"] {
-            background: #fff;
-            border: 1px solid #e7e4dc;
-            border-radius: 16px;
-            padding: 1.1rem 1.15rem 0.4rem;
-          }
-          [data-testid="stExpander"] {
-            background: #fff;
-            border: 1px solid #e7e4dc;
-            border-radius: 14px;
-            margin-bottom: 0.55rem;
-          }
-          [data-testid="stTextInput"] input,
-          [data-testid="stTextArea"] textarea {
-            background: #faf8f4 !important;
-            color: #1c1c1a !important;
-          }
-          div[data-testid="stMetric"] {
-            background: #fff;
-            border: 1px solid #e7e4dc;
-            border-radius: 14px;
-            padding: 0.7rem 0.9rem;
-          }
-          .record {
-            background: #fff;
-            border: 1px solid #e7e4dc;
-            border-radius: 14px;
-            padding: 0.9rem 1rem;
-            margin-bottom: 0.65rem;
-          }
-          .record h4 { margin: 0 0 0.2rem; font-size: 0.95rem; color: #171716; }
-          .muted { color: #7a776e; font-size: 0.8rem; }
-          .pill {
-            display: inline-block;
-            font-size: 0.72rem;
-            letter-spacing: 0.02em;
-            padding: 0.12rem 0.5rem;
-            border-radius: 999px;
-            background: #efeae0;
-            color: #4a4840;
-            margin-right: 0.35rem;
-          }
-          .pill.done { background: #e5efe6; color: #2f5a38; }
-          .pill.warn { background: #f3ead8; color: #6a4b12; }
-          .section-label {
-            font-size: 0.72rem;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            color: #8a867c;
-            margin: 0 0 0.7rem;
-          }
-          [data-testid="stChatInput"] {
-            position: fixed !important;
-            right: 1.15rem;
-            bottom: 1.15rem;
-            width: min(390px, calc(100vw - 1.6rem));
-            z-index: 10000;
-            background: #fff;
-            border: 1px solid #e7e4dc;
-            border-radius: 16px;
-            padding: 0.35rem 0.45rem;
-            box-shadow: 0 16px 44px rgba(40, 36, 28, 0.14);
-          }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+# Sidebar radio instead of st.tabs or st.navigation:
+# - Branding + student snapshot stay visible while switching workspaces.
+# - Four study tools plus a dedicated tutor view (chat needs full width).
+# - Multipage files would split a single-script app without a real gain.
+NAV_ITEMS = ("Planner", "Exams", "Quizzes", "Tutor", "History")
 
 
 def show_ai_error(exc: Exception) -> None:
     st.error(str(exc))
-
-
-def pretty_dt(value: str | None) -> str:
-    if not value:
-        return ""
-    try:
-        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        return dt.strftime("%d %b · %H:%M")
-    except ValueError:
-        return value[:16]
 
 
 def parse_details(raw: str | None) -> dict:
@@ -186,59 +84,6 @@ def parse_details(raw: str | None) -> dict:
         return data if isinstance(data, dict) else {"tasks": data}
     except json.JSONDecodeError:
         return {"tasks": [raw]}
-
-
-def record_card(title: str, meta: str, pills: list[str] | None = None, body: str = "") -> None:
-    pills_html = "".join(
-        f'<span class="pill">{security.escape_html(p)}</span>' for p in (pills or []) if p
-    )
-    body_html = (
-        f"<div style='margin-top:0.45rem;font-size:0.9rem'>{security.escape_html(body)}</div>"
-        if body
-        else ""
-    )
-    st.markdown(
-        f"""
-        <div class="record">
-          <h4>{security.escape_html(title)}</h4>
-          <div class="muted">{pills_html}{security.escape_html(meta)}</div>
-          {body_html}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def render_sidebar() -> None:
-    st.sidebar.markdown('<p class="section-label">Memory</p>', unsafe_allow_html=True)
-    st.sidebar.caption("Shared across planner, exams, and quizzes.")
-    ctx = db.get_all_context()
-    if not ctx:
-        st.sidebar.caption("Nothing saved yet.")
-    else:
-        for key, value in ctx.items():
-            label = MEMORY_LABELS.get(key, key.replace("_", " ").title())
-            snippet = value if len(value) < 140 else value[:137] + "…"
-            st.sidebar.markdown(f"**{label}**")
-            st.sidebar.caption(snippet)
-    if not keys_configured():
-        st.sidebar.error("No Gemini API key in `.env.local`.")
-
-    st.sidebar.divider()
-    st.sidebar.markdown('<p class="section-label">Ask Ruia</p>', unsafe_allow_html=True)
-    st.sidebar.caption("Instant doubts. Uses your saved plans and quiz misses.")
-    if "chat_messages" not in st.session_state:
-        chat_rows = db.get_chat(24) if hasattr(db, "get_chat") else []
-        st.session_state.chat_messages = [
-            {"role": row["role"], "content": row["content"]} for row in chat_rows
-        ]
-    log = st.sidebar.container(height=260)
-    with log:
-        if not st.session_state.chat_messages:
-            st.caption("Try: explain a missed quiz topic, or walk through a formula.")
-        for msg in st.session_state.chat_messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
 
 
 def grouped_plan_batches(items: list) -> list[tuple[str, list]]:
@@ -337,11 +182,66 @@ def export_everything() -> str:
     return "\n".join(parts)
 
 
+def ensure_chat_state() -> None:
+    if "chat_messages" not in st.session_state:
+        chat_rows = db.get_chat(24) if hasattr(db, "get_chat") else []
+        st.session_state.chat_messages = [
+            {"role": row["role"], "content": row["content"]} for row in chat_rows
+        ]
+
+
+def render_sidebar() -> str:
+    with st.sidebar:
+        brand_cols = st.columns([1, 4])
+        with brand_cols[0]:
+            if ICON_PATH.exists():
+                st.image(str(ICON_PATH), width=40)
+            else:
+                st.markdown('<div class="brand-mark">R</div>', unsafe_allow_html=True)
+        with brand_cols[1]:
+            st.markdown(
+                f'<p class="brand-title">{APP_NAME}</p>'
+                f'<p class="brand-tag">{APP_TAGLINE}</p>',
+                unsafe_allow_html=True,
+            )
+
+        st.divider()
+        page = st.radio("Workspace", NAV_ITEMS, label_visibility="collapsed")
+
+        st.divider()
+        section_header("Snapshot", "Student context")
+        ctx = db.get_all_context()
+        all_tasks = db.query_tasks(limit=200)
+        snapshot_item("Weak topics", ctx.get("weak_topics") or ctx.get("last_quiz_missed_topics"), "None saved yet")
+        snapshot_item("Next exam", ctx.get("next_exam"), "No exam on file")
+        snapshot_item("Study streak", str(activity_streak(all_tasks)) + " day(s)", "0 day(s)")
+        snapshot_item("Last quiz", ctx.get("last_quiz_score"), "No quiz yet")
+
+        with st.expander("All memory"):
+            if not ctx:
+                st.caption("Nothing saved yet.")
+            else:
+                for key, value in ctx.items():
+                    label = MEMORY_LABELS.get(key, key.replace("_", " ").title())
+                    snippet = value if len(value) < 140 else value[:137] + "…"
+                    st.markdown(f"**{label}**")
+                    st.caption(snippet)
+
+        if not keys_configured():
+            st.error("No Gemini API key in `.env.local`.")
+
+    return page
+
+
+# ---------------------------------------------------------------------------
+# Planner
+# ---------------------------------------------------------------------------
 def study_planner_tab() -> None:
+    section_header("Study planner", "Seven-day plan")
     create, library = st.columns([0.42, 0.58], gap="large")
 
     with create:
-        st.markdown('<p class="section-label">New plan</p>', unsafe_allow_html=True)
+        section_header("New plan", "Inputs")
         with st.form("planner_form"):
             subjects = st.text_input("Subjects", placeholder="Physics, Chemistry, Maths", max_chars=200)
             exam_window = st.text_input("Exam window", placeholder="Physics board exam in 14 days", max_chars=200)
@@ -421,14 +321,13 @@ def study_planner_tab() -> None:
                 )
                 st.success("Saved to your library.")
 
+        st.divider()
+        section_header("This week", "Generated plan")
         plan = st.session_state.get("last_plan")
         if plan:
             weak = db.get_context("last_quiz_missed_topics") or db.get_context("weak_topics")
             if weak and weak != "none":
-                st.markdown(
-                    f'<span class="pill warn">Adapted for {weak}</span>',
-                    unsafe_allow_html=True,
-                )
+                st.markdown(pill(f"Adapted for {weak}", "warn"), unsafe_allow_html=True)
             if plan.get("summary"):
                 st.markdown(plan["summary"])
             if st.session_state.get("last_plan_md"):
@@ -440,20 +339,23 @@ def study_planner_tab() -> None:
                     use_container_width=True,
                     key="dl_current_plan",
                 )
-            for day in plan.get("days") or []:
-                with st.expander(f"Day {day.get('day', '')}  ·  {day.get('focus', 'Focus')}"):
-                    for task in day.get("tasks") or []:
-                        st.markdown(f"- {task}")
+            render_week_grid(plan.get("days") or [], db.get_context("hours_per_day"))
         elif db.get_context("latest_plan_summary"):
             st.caption("Latest saved summary")
-            st.write(db.get_context("latest_plan_summary"))
+            st.info(db.get_context("latest_plan_summary"))
+        else:
+            empty_state(
+                "No plan generated yet",
+                "Fill in subjects and hours, then generate a 7-day plan.",
+                "▦",
+            )
 
     with library:
-        st.markdown('<p class="section-label">Saved planners</p>', unsafe_allow_html=True)
+        section_header("Saved planners", "Library")
         items = db.query_tasks("plan_item", limit=60)
         groups = grouped_plan_batches(items)
         if not groups:
-            st.caption("No plans yet. Generate one to fill this library.")
+            empty_state("No plans saved yet", "Generate one on the left to fill this library.", "▤")
         else:
             for i, (_batch, rows) in enumerate(groups):
                 rows_sorted = sorted(rows, key=lambda x: x[0]["id"])
@@ -473,18 +375,29 @@ def study_planner_tab() -> None:
                     )
                     if summary:
                         st.write(summary)
+                    lib_days = []
                     for row, detail in rows_sorted:
-                        tasks = detail.get("tasks") or []
-                        st.markdown(f"**{row['title']}**")
-                        for task in tasks:
-                            st.markdown(f"- {task}")
+                        title = row["title"] or ""
+                        day_num = title.split(":")[0].replace("Day", "").strip() if title else "?"
+                        lib_days.append(
+                            {
+                                "day": day_num,
+                                "focus": row["subject"] or title,
+                                "tasks": detail.get("tasks") or [],
+                            }
+                        )
+                    render_week_grid(lib_days, details.get("hours") or db.get_context("hours_per_day"))
 
 
+# ---------------------------------------------------------------------------
+# Exams
+# ---------------------------------------------------------------------------
 def exam_tracker_tab() -> None:
+    section_header("Exam tracker", "Upcoming and completed")
     create, records = st.columns([0.4, 0.6], gap="large")
 
     with create:
-        st.markdown('<p class="section-label">Add exam</p>', unsafe_allow_html=True)
+        section_header("Add exam", "Inputs")
         with st.form("exam_form"):
             title = st.text_input("Exam name", placeholder="Semester Physics paper", max_chars=120)
             subject = st.text_input("Subject", placeholder="Physics", max_chars=80)
@@ -512,6 +425,8 @@ def exam_tracker_tab() -> None:
                 )
                 st.success("Exam added.")
 
+        st.divider()
+        section_header("Revision order", "Coach")
         if st.button("Suggest revision order", use_container_width=True):
             exams = db.query_tasks("exam", limit=30)
             exam_lines = [
@@ -533,9 +448,15 @@ def exam_tracker_tab() -> None:
                     remember_insights({"latest_exam_advice": advice[:500]})
                 except AIError as exc:
                     show_ai_error(exc)
+        else:
+            note = db.get_context("latest_exam_advice")
+            if note:
+                with st.container(border=True):
+                    st.caption("Latest advice")
+                    st.markdown(note)
 
     with records:
-        st.markdown('<p class="section-label">Exam records</p>', unsafe_allow_html=True)
+        section_header("Exam records", "List")
         exams = db.query_tasks("exam", limit=30)
         upcoming = [r for r in exams if r["status"] != "done"]
         done = [r for r in exams if r["status"] == "done"]
@@ -549,35 +470,61 @@ def exam_tracker_tab() -> None:
                 key="dl_exams",
             )
         if not exams:
-            st.caption("No exams saved.")
+            empty_state("No exams saved yet", "Add your first one on the left.", "▣")
         else:
             st.caption("Upcoming")
             for row in upcoming:
                 cols = st.columns([5, 1])
                 with cols[0]:
-                    record_card(
-                        row["title"],
-                        pretty_dt(row["due_date"]) or (row["due_date"] or ""),
-                        pills=[row["subject"] or "", f"{int(row['confidence_score'] or 0)}/10"],
-                    )
+                    render_exam_card(row, completed=False)
                 if cols[1].button("Done", key=f"exam_done_{row['id']}"):
                     db.update_task_status(row["id"], "done")
                     st.rerun()
             if done:
                 st.caption("Completed")
                 for row in done:
-                    record_card(
-                        row["title"],
-                        row["due_date"] or "",
-                        pills=[row["subject"] or "", "done"],
-                    )
+                    render_exam_card(row, completed=True)
+
+
+# ---------------------------------------------------------------------------
+# Quizzes
+# ---------------------------------------------------------------------------
+def _quiz_results_panel(
+    results: list,
+    score: int | None,
+    missed_topics: str | None = None,
+    *,
+    show_memory_note: bool = False,
+) -> None:
+    total = len(results)
+    correct = sum(1 for r in results if r.get("correct"))
+    missed_label = missed_topics if missed_topics and missed_topics != "none" else "None"
+    metric_row(
+        [
+            ("Score", f"{score}%" if score is not None else "—"),
+            ("Correct", f"{correct}/{total}" if total else "—"),
+            ("Missed topics", missed_label),
+        ]
+    )
+    for row in results:
+        with st.container(border=True):
+            mark = "Correct" if row["correct"] else "Missed"
+            cls = "quiz-result-ok" if row["correct"] else "quiz-result-miss"
+            st.markdown(f'<p class="{cls}">{mark}</p>', unsafe_allow_html=True)
+            st.markdown(row.get("question") or "")
+            if not row["correct"]:
+                st.caption(f"Yours: {row.get('your', '')}")
+                st.caption(f"Answer: {row.get('answer', '')}")
+    if show_memory_note and missed_topics and missed_topics != "none":
+        st.caption(f"Saved to memory: {missed_topics}. Open Planner to adapt the next plan.")
 
 
 def quiz_generator_tab() -> None:
+    section_header("Quiz generator", "Practice MCQs")
     create, records = st.columns([0.55, 0.45], gap="large")
 
     with create:
-        st.markdown('<p class="section-label">New quiz</p>', unsafe_allow_html=True)
+        section_header("New quiz", "Inputs")
         with st.form("quiz_form"):
             subject = st.text_input("Subject", placeholder="Physics", max_chars=80)
             topic = st.text_input("Topic", placeholder="Thermodynamics", max_chars=120)
@@ -617,18 +564,20 @@ def quiz_generator_tab() -> None:
                 st.session_state.pop("quiz_submitted", None)
 
         quiz = st.session_state.get("quiz")
-        if quiz:
-            st.markdown(f"**{quiz['subject']}**  ·  {quiz['topic']}")
+        if quiz and not st.session_state.get("quiz_submitted"):
+            st.divider()
+            section_header(f"{quiz['subject']}", quiz["topic"])
             answers = {}
             with st.form("quiz_answers"):
                 for i, q in enumerate(quiz["questions"]):
                     options = q.get("options") or []
-                    answers[i] = st.radio(
-                        f"{i+1}. {q.get('question', '')}",
-                        options=list(range(len(options))),
-                        format_func=lambda idx, opts=options: opts[idx] if idx < len(opts) else str(idx),
-                        key=f"q_{i}",
-                    )
+                    with st.container(border=True):
+                        answers[i] = st.radio(
+                            f"{i+1}. {q.get('question', '')}",
+                            options=list(range(len(options))),
+                            format_func=lambda idx, opts=options: opts[idx] if idx < len(opts) else str(idx),
+                            key=f"q_{i}",
+                        )
                 submit = st.form_submit_button("Submit", use_container_width=True)
 
             if submit:
@@ -684,26 +633,24 @@ def quiz_generator_tab() -> None:
                 st.session_state["quiz_submitted"] = results
                 st.session_state["quiz_score"] = score
                 st.rerun()
-
-            if st.session_state.get("quiz_submitted"):
-                st.markdown(
-                    f'<span class="pill">Score {st.session_state.get("quiz_score")}%</span>',
-                    unsafe_allow_html=True,
-                )
-                for row in st.session_state["quiz_submitted"]:
-                    mark = "Correct" if row["correct"] else "Missed"
-                    st.markdown(f"**{mark}**  ·  {row['question']}")
-                    if not row["correct"]:
-                        st.caption(f"Yours: {row['your']}  ·  Answer: {row['answer']}")
-                missed = db.get_context("last_quiz_missed_topics")
-                if missed and missed != "none":
-                    st.caption(f"Saved to memory: {missed}. Open Planner to adapt the next plan.")
+        elif quiz and st.session_state.get("quiz_submitted"):
+            st.divider()
+            section_header("Results", "This attempt")
+            missed = db.get_context("last_quiz_missed_topics")
+            _quiz_results_panel(
+                st.session_state["quiz_submitted"],
+                st.session_state.get("quiz_score"),
+                missed,
+                show_memory_note=True,
+            )
+        else:
+            empty_state("No quiz in progress", "Choose a subject and topic, then generate questions.", "?")
 
     with records:
-        st.markdown('<p class="section-label">Quiz records</p>', unsafe_allow_html=True)
+        section_header("Quiz records", "Past attempts")
         past = db.query_tasks("quiz_result", limit=12)
         if not past:
-            st.caption("No quizzes yet.")
+            empty_state("No quizzes yet", "Generate and submit a quiz to see scores here.", "◇")
         else:
             for row in past:
                 details = parse_details(row["details"])
@@ -720,24 +667,83 @@ def quiz_generator_tab() -> None:
                     )
                     results = details.get("results") or []
                     if results:
-                        for item in results:
-                            mark = "Correct" if item.get("correct") else "Missed"
-                            st.markdown(f"**{mark}**  ·  {item.get('question', '')}")
-                            if not item.get("correct"):
-                                st.caption(
-                                    f"Yours: {item.get('your', '')}  ·  Answer: {item.get('answer', '')}"
-                                )
+                        _quiz_results_panel(results, int(row["confidence_score"] or 0), missed_txt)
                     else:
-                        record_card(
-                            row["title"],
-                            pretty_dt(row["created_at"]),
-                            pills=[row["subject"] or "", f"{int(row['confidence_score'] or 0)}%"],
-                            body=missed_txt,
-                        )
+                        st.caption(f"{row['subject'] or ''} · {int(row['confidence_score'] or 0)}%")
 
 
+# ---------------------------------------------------------------------------
+# Tutor (chat)
+# ---------------------------------------------------------------------------
+def tutor_tab() -> None:
+    section_header("Tutor", "Ask Ruia")
+    st.caption("Uses your saved plans and quiz misses. Keep questions specific.")
+    ensure_chat_state()
+    log = st.container()
+    with log:
+        if not st.session_state.chat_messages:
+            empty_state(
+                "No messages yet",
+                "Try: explain a missed quiz topic, or walk through a formula.",
+                "💬",
+            )
+        for msg in st.session_state.chat_messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+    handle_chat_input()
+
+
+def handle_chat_input() -> None:
+    prompt = st.chat_input("Ask Ruia a doubt…")
+    if not prompt:
+        return
+    prompt = security.clamp_text(prompt, security.MAX_CHAT)
+    if not prompt:
+        return
+    ensure_chat_state()
+    st.session_state.chat_messages.append({"role": "user", "content": prompt})
+    db.add_chat("user", prompt)
+    try:
+        with st.spinner("Ruia is thinking…"):
+            reply = safe_ai(
+                "You are Ruia, a calm, precise tutor. Solve the student's doubt clearly. "
+                "Use their saved weak topics and plans when relevant. Keep answers short, "
+                "with steps if it is a numerical or coding problem.",
+                prompt,
+                max_tokens=1024,
+            )
+    except AIError as exc:
+        reply = str(exc)
+    st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+    db.add_chat("assistant", reply)
+    st.rerun()
+
+
+# ---------------------------------------------------------------------------
+# History + progress (former insights charts live here)
+# ---------------------------------------------------------------------------
 def history_tab() -> None:
-    st.markdown('<p class="section-label">Past work</p>', unsafe_allow_html=True)
+    section_header("History", "Records and progress")
+    plans = db.query_tasks("plan_item", limit=200)
+    exams = db.query_tasks("exam", limit=200)
+    quizzes = db.query_tasks("quiz_result", limit=200)
+    quizzes_chrono = list(reversed(quizzes[:40]))
+
+    avg = 0
+    if quizzes:
+        avg = round(sum(float(q["confidence_score"] or 0) for q in quizzes) / len(quizzes))
+    upcoming_n = len([e for e in exams if e["status"] != "done"])
+    done_n = len([e for e in exams if e["status"] == "done"])
+    metric_row(
+        [
+            ("Saved plans", str(len(grouped_plan_batches(plans)))),
+            ("Quizzes", str(len(quizzes))),
+            ("Avg. quiz score", f"{avg}%" if quizzes else "—"),
+            ("Exams done", f"{done_n}"),
+            ("Upcoming", str(upcoming_n)),
+        ]
+    )
+
     st.download_button(
         "Download everything",
         data=export_everything(),
@@ -746,12 +752,76 @@ def history_tab() -> None:
         key="dl_all",
     )
 
-    plans, exams, quizzes, chats = st.tabs(["Plans", "Exams", "Quizzes", "Chat"])
+    st.divider()
+    section_header("Progress", "Charts")
+    snapshot = analytics.build_dashboard_snapshot(plans, exams, quizzes)
+    left, right = st.columns(2, gap="large")
+    with left:
+        st.caption("Quiz scores")
+        if quizzes_chrono:
+            score_map = {
+                f"{i+1}. {row['subject'] or 'Quiz'}": float(row["confidence_score"] or 0)
+                for i, row in enumerate(quizzes_chrono)
+            }
+            st.bar_chart(score_map, use_container_width=True)
+        else:
+            st.caption("Take a quiz to see your score trend.")
+        if snapshot["quiz_scores"]:
+            quiz_df = pd.DataFrame(snapshot["quiz_scores"])
+            st.line_chart(quiz_df.set_index("date")["score"])
+        st.caption("Exam confidence")
+        if exams:
+            conf_map = {
+                (row["subject"] or row["title"] or f"Exam {row['id']}"): float(row["confidence_score"] or 0)
+                for row in exams
+            }
+            st.bar_chart(conf_map, use_container_width=True)
+        else:
+            st.caption("Add exams to compare readiness.")
 
-    with plans:
-        groups = grouped_plan_batches(db.query_tasks("plan_item", limit=200))
-        if not groups:
-            st.caption("No saved plans yet.")
+    with right:
+        st.caption("Missed topics")
+        counts: dict[str, int] = defaultdict(int)
+        for row in quizzes:
+            details = parse_details(row["details"])
+            for topic in dict.fromkeys(details.get("missed") or []):
+                if topic and topic != "none":
+                    counts[str(topic)] += 1
+        if counts:
+            st.bar_chart(dict(counts), use_container_width=True)
+        else:
+            st.caption("Missed quiz topics will appear here.")
+        st.caption("Activity mix")
+        mix = {
+            "Plans": len(grouped_plan_batches(plans)),
+            "Exams": len(exams),
+            "Quizzes": len(quizzes),
+        }
+        st.bar_chart(mix, use_container_width=True)
+
+    st.divider()
+    section_header("Plans", "Table")
+    groups = grouped_plan_batches(plans)
+    if not groups:
+        empty_state("No saved plans yet", "Generate a plan in Planner.", "▤")
+    else:
+        plan_rows = []
+        for _batch, rows in groups:
+            rows_sorted = sorted(rows, key=lambda x: x[0]["id"])
+            first, details = rows_sorted[0]
+            plan_rows.append(
+                {
+                    "Focus": details.get("focus") or first["subject"] or "Study plan",
+                    "Days": len(rows),
+                    "Saved": pretty_dt(first["created_at"]),
+                    "Summary": (details.get("summary") or "")[:160],
+                }
+            )
+        st.dataframe(
+            pd.DataFrame(plan_rows),
+            use_container_width=True,
+            hide_index=True,
+        )
         for _batch, rows in groups:
             rows_sorted = sorted(rows, key=lambda x: x[0]["id"])
             first, details = rows_sorted[0]
@@ -766,34 +836,69 @@ def history_tab() -> None:
                     mime="text/markdown",
                     key=f"hist_dl_plan_{_batch}",
                 )
-                for row, detail in rows_sorted:
-                    st.markdown(f"**{row['title']}**")
-                    for task in detail.get("tasks") or []:
-                        st.markdown(f"- {task}")
 
-    with exams:
-        exam_rows = db.query_tasks("exam", limit=200)
-        if not exam_rows:
-            st.caption("No exams yet.")
-        else:
-            st.download_button(
-                "Download exams",
-                data=exams_markdown(exam_rows),
-                file_name="ruia-exams.md",
-                mime="text/markdown",
-                key="hist_dl_exams",
+    st.divider()
+    section_header("Exams", "Table")
+    if not exams:
+        empty_state("No exams yet", "Add exams in the Exams workspace.", "▣")
+    else:
+        st.download_button(
+            "Download exams",
+            data=exams_markdown(exams),
+            file_name="ruia-exams.md",
+            mime="text/markdown",
+            key="hist_dl_exams",
+        )
+        exam_df = pd.DataFrame(
+            [
+                {
+                    "Exam": row["title"],
+                    "Subject": row["subject"] or "",
+                    "Date": pretty_date(row["due_date"]),
+                    "Status": row["status"],
+                    "Confidence": float(row["confidence_score"] or 0),
+                }
+                for row in exams
+            ]
+        )
+        st.dataframe(
+            exam_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Confidence": st.column_config.ProgressColumn(
+                    "Confidence", min_value=0, max_value=10, format="%d/10"
+                ),
+            },
+        )
+
+    st.divider()
+    section_header("Quizzes", "Table")
+    if not quizzes:
+        empty_state("No quizzes yet", "Complete a quiz to see scores here.", "◇")
+    else:
+        quiz_table = []
+        for row in quizzes:
+            details = parse_details(row["details"])
+            missed = list(dict.fromkeys(details.get("missed") or []))
+            quiz_table.append(
+                {
+                    "Title": row["title"],
+                    "Subject": row["subject"] or "",
+                    "Score": float(row["confidence_score"] or 0),
+                    "Missed": ", ".join(missed) if missed else "—",
+                    "Date": pretty_dt(row["created_at"]),
+                }
             )
-            for row in exam_rows:
-                with st.expander(f"{row['title']}  ·  {row['status']}"):
-                    st.write(f"Subject: {row['subject']}")
-                    st.write(f"Date: {row['due_date'] or '—'}")
-                    st.write(f"Confidence: {row['confidence_score']}")
-
-    with quizzes:
-        past = db.query_tasks("quiz_result", limit=200)
-        if not past:
-            st.caption("No quizzes yet.")
-        for row in past:
+        st.dataframe(
+            pd.DataFrame(quiz_table),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Score": st.column_config.ProgressColumn("Score", min_value=0, max_value=100, format="%d%%"),
+            },
+        )
+        for row in quizzes:
             details = parse_details(row["details"])
             with st.expander(f"{row['title']}  ·  {pretty_dt(row['created_at'])}"):
                 st.download_button(
@@ -806,177 +911,44 @@ def history_tab() -> None:
                 results = details.get("results") or []
                 if not results:
                     st.caption("Only the score was saved for this older quiz.")
-                for item in results:
-                    mark = "Correct" if item.get("correct") else "Missed"
-                    st.markdown(f"**{mark}**  ·  {item.get('question', '')}")
-                    if not item.get("correct"):
-                        st.caption(
-                            f"Yours: {item.get('your', '')}  ·  Answer: {item.get('answer', '')}"
-                        )
+                else:
+                    missed = list(dict.fromkeys(details.get("missed") or []))
+                    missed_txt = ", ".join(missed) if missed else "none"
+                    _quiz_results_panel(results, int(row["confidence_score"] or 0), missed_txt)
 
-    with chats:
-        messages = db.get_chat(80)
-        if not messages:
-            st.caption("No chat yet. Ask a doubt in the Ask Ruia box.")
-        for msg in messages:
-            st.markdown(f"**{msg['role']}** · {pretty_dt(msg['created_at'])}")
-            st.write(msg["content"])
-
-
-def insights_tab() -> None:
-    st.markdown('<p class="section-label">Progress</p>', unsafe_allow_html=True)
-    quizzes = list(reversed(db.query_tasks("quiz_result", limit=40)))
-    exams = db.query_tasks("exam", limit=40)
-    quizzes_all = db.query_tasks("quiz_result", limit=200)
-    exams_all = db.query_tasks("exam", limit=200)
-
-    c1, c2, c3 = st.columns(3)
-    avg = 0
-    if quizzes_all:
-        avg = round(sum(float(q["confidence_score"] or 0) for q in quizzes_all) / len(quizzes_all))
-    c1.metric("Quizzes taken", len(quizzes_all))
-    c2.metric("Average score", f"{avg}%" if quizzes_all else "—")
-    c3.metric("Upcoming exams", len([e for e in exams_all if e["status"] != "done"]))
-
-    left, right = st.columns(2, gap="large")
-    with left:
-        st.caption("Quiz scores")
-        if quizzes:
-            score_map = {
-                f"{i+1}. {row['subject'] or 'Quiz'}": float(row["confidence_score"] or 0)
-                for i, row in enumerate(quizzes)
-            }
-            st.bar_chart(score_map, use_container_width=True)
-        else:
-            st.caption("Take a quiz to see your score trend.")
-        st.caption("Exam confidence")
-        if exams:
-            conf_map = {
-                (row["subject"] or row["title"] or f"Exam {row['id']}"): float(row["confidence_score"] or 0)
-                for row in exams
-            }
-            st.bar_chart(conf_map, use_container_width=True)
-        else:
-            st.caption("Add exams to compare readiness.")
-
-    with right:
-        st.caption("Missed topics")
-        counts: dict[str, int] = defaultdict(int)
-        for row in quizzes_all:
-            details = parse_details(row["details"])
-            for topic in dict.fromkeys(details.get("missed") or []):
-                if topic and topic != "none":
-                    counts[str(topic)] += 1
-        if counts:
-            st.bar_chart(dict(counts), use_container_width=True)
-        else:
-            st.caption("Missed quiz topics will appear here.")
-        st.caption("Activity mix")
-        mix = {
-            "Plans": len(grouped_plan_batches(db.query_tasks("plan_item", limit=200))),
-            "Exams": len(exams_all),
-            "Quizzes": len(quizzes_all),
-        }
-        st.bar_chart(mix, use_container_width=True)
-
-
-def handle_chat_input() -> None:
-    prompt = st.chat_input("Ask Ruia a doubt…")
-    if not prompt:
-        return
-    prompt = security.clamp_text(prompt, security.MAX_CHAT)
-    if not prompt:
-        return
-    if "chat_messages" not in st.session_state:
-        st.session_state.chat_messages = []
-    st.session_state.chat_messages.append({"role": "user", "content": prompt})
-    db.add_chat("user", prompt)
-    try:
-        reply = safe_ai(
-            "You are Ruia, a calm, precise tutor. Solve the student's doubt clearly. "
-            "Use their saved weak topics and plans when relevant. Keep answers short, "
-            "with steps if it is a numerical or coding problem.",
-            prompt,
-            max_tokens=1024,
+    st.divider()
+    section_header("Chat", "Table")
+    messages = db.get_chat(80)
+    if not messages:
+        empty_state("No chat yet", "Ask a doubt in the Tutor workspace.", "💬")
+    else:
+        chat_df = pd.DataFrame(
+            [
+                {
+                    "Role": msg["role"],
+                    "When": pretty_dt(msg["created_at"]),
+                    "Message": msg["content"],
+                }
+                for msg in messages
+            ]
         )
-    except AIError as exc:
-        reply = str(exc)
-    st.session_state.chat_messages.append({"role": "assistant", "content": reply})
-    db.add_chat("assistant", reply)
-    st.rerun()
+        st.dataframe(chat_df, use_container_width=True, hide_index=True)
 
 
 def main() -> None:
     inject_css()
-    plans = db.query_tasks("plan_item", limit=200)
-    exams = db.query_tasks("exam", limit=200)
-    quizzes = db.query_tasks("quiz_result", limit=200)
+    page = render_sidebar()
 
-    st.markdown(
-        f"""
-        <div class="brand-shell">
-          <div style="display:flex; align-items:center; gap:0.95rem;">
-            <img src="data:image/png;base64,{base64.b64encode(ICON_PATH.read_bytes()).decode('utf-8')}" style="width:52px; height:52px; border-radius:16px; object-fit:cover;" />
-            <div>
-              <div class="brand-title">{APP_NAME}</div>
-              <div class="brand-tag">{APP_TAGLINE}</div>
-            </div>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Saved plans", len(grouped_plan_batches(plans)))
-    m2.metric("Exams", len(exams))
-    m3.metric("Quizzes", len(quizzes))
-
-    snapshot = analytics.build_dashboard_snapshot(plans, exams, quizzes)
-    counts_df = pd.DataFrame(
-        {
-            "Category": list(snapshot["counts"].keys()),
-            "Value": list(snapshot["counts"].values()),
-        }
-    )
-
-    st.markdown("### Dashboard insights")
-    st.caption("Quick visual overview of student activity and progress.")
-
-    chart_col1, chart_col2 = st.columns(2)
-    with chart_col1:
-        st.subheader("Records by type")
-        st.bar_chart(counts_df.set_index("Category")["Value"])
-
-    with chart_col2:
-        st.subheader("Quiz scores")
-        if snapshot["quiz_scores"]:
-            quiz_df = pd.DataFrame(snapshot["quiz_scores"])
-            st.line_chart(quiz_df.set_index("date")["score"])
-        else:
-            st.info("No quiz scores yet. Complete a quiz to see score trends.")
-
-    if snapshot["exam_confidence"]:
-        exam_df = pd.DataFrame(snapshot["exam_confidence"])
-        st.subheader("Exam confidence")
-        st.bar_chart(exam_df.set_index("subject")["confidence"])
-
-    render_sidebar()
-    tab1, tab2, tab3, tab4 = st.tabs(["Planner", "Exams", "Quizzes", "History"])
-    with tab1:
-        st.write("")
+    if page == "Planner":
         study_planner_tab()
-    with tab2:
-        st.write("")
+    elif page == "Exams":
         exam_tracker_tab()
-    with tab3:
-        st.write("")
+    elif page == "Quizzes":
         quiz_generator_tab()
-    with tab4:
-        st.write("")
+    elif page == "Tutor":
+        tutor_tab()
+    else:
         history_tab()
-
-    handle_chat_input()
 
 
 main()
