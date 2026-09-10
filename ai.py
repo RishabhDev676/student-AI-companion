@@ -1,6 +1,21 @@
 import os
 import requests
 from dotenv import load_dotenv
+import json
+
+
+def safe_json_parse(json_string: str, max_size_bytes: int = 10_000_000):
+    # 1. Protect against resource exhaustion (DoS) by limiting input size
+    if len(json_string.encode('utf-8')) > max_size_bytes:
+        raise ValueError("JSON payload too large.")
+        
+    try:
+        # 2. Safely parse the string
+        return json.loads(json_string)
+    except json.JSONDecodeError as e:
+        # 3. Handle malformed JSON safely
+        print(f"Invalid JSON format: {e}")
+        return None
 
 load_dotenv()
 
@@ -44,7 +59,7 @@ def ai(prompt, system="You are a helpful AI assistant.", max_tokens=1024):
             )
 
             if r.status_code == 200:
-                return r.json()["candidates"][0]["content"]["parts"][0]["text"]
+                return safe_json_parse(r.json()["candidates"][0]["content"]["parts"][0]["text"])
 
             print(f"[AI] Key {i} failed ({r.status_code}), trying next...")
 
