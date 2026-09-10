@@ -205,3 +205,13 @@ def get_chat(limit: int = 40) -> list[sqlite3.Row]:
         finally:
             conn.close()
     return []
+
+
+def clear_chat() -> None:
+    conn = get_conn()
+    try:
+        _ensure_chat_table(conn)
+        conn.execute("DELETE FROM chat_messages")
+        conn.commit()
+    finally:
+        conn.close()

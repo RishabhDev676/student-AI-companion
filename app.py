@@ -676,7 +676,14 @@ def quiz_generator_tab() -> None:
 # Tutor (chat)
 # ---------------------------------------------------------------------------
 def tutor_tab() -> None:
-    section_header("Tutor", "Ask Ruia")
+    title_col, action_col = st.columns([0.82, 0.18], vertical_alignment="bottom")
+    with title_col:
+        section_header("Tutor", "Ask Ruia")
+    with action_col:
+        if st.button("Clear chat", key="clear_chat", help="Delete this chat history"):
+            db.clear_chat()
+            st.session_state.chat_messages = []
+            st.rerun()
     st.caption("Uses your saved plans and quiz misses. Keep questions specific.")
     ensure_chat_state()
     log = st.container()

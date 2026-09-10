@@ -35,6 +35,8 @@ class DbTests(unittest.TestCase):
         chat = db.get_chat()
         self.assertEqual(chat[0]["content"], "What is entropy?")
         self.assertEqual(chat[0]["role"], "user")
+        db.clear_chat()
+        self.assertEqual(db.get_chat(), [])
 
 
 class SecurityTests(unittest.TestCase):
