@@ -11,7 +11,7 @@ def safe_json_parse(json_string: str, max_size_bytes: int = 10_000_000):
         
     try:
         # 2. Safely parse the string
-        return json.loads(json_string)
+        return safe_json_parse(json_string)
     except json.JSONDecodeError as e:
         # 3. Handle malformed JSON safely
         print(f"Invalid JSON format: {e}")
