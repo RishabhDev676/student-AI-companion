@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import importlib
 import json
 from collections import defaultdict
 from datetime import date, datetime
@@ -16,11 +18,19 @@ import db
 import security
 from ai_service import AIError, call_ai, keys_configured, remember_insights
 
+# Streamlit keeps imported modules in memory across reruns. Reload local
+# helpers so new functions (e.g. db.get_chat) are visible without a full restart.
+db = importlib.reload(db)
+analytics = importlib.reload(analytics)
+security = importlib.reload(security)
+
 ROOT = Path(__file__).resolve().parent
 ICON_PATH = ROOT / "icon.png"
+APP_NAME = "Ruia Pulse"
+APP_TAGLINE = "Student companion · planner, exams, quizzes"
 
 st.set_page_config(
-    page_title="Ruia Student Companion",
+    page_title=APP_NAME,
     page_icon=str(ICON_PATH) if ICON_PATH.exists() else "✦",
     layout="wide",
 )
@@ -50,6 +60,27 @@ def inject_css() -> None:
           [data-testid="stHeader"] { background: transparent; }
           .stAppDeployButton { display: none; }
           footer { visibility: hidden; }
+          .brand-shell {
+            background: linear-gradient(135deg, #1f1e1d 0%, #4d443d 100%);
+            border-radius: 22px;
+            padding: 1.05rem 1.2rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 14px 30px rgba(35, 29, 24, 0.12);
+          }
+          .brand-shell .brand-title {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            color: #f7f4ef;
+            margin: 0;
+            line-height: 1.1;
+          }
+          .brand-shell .brand-tag {
+            font-size: 0.9rem;
+            color: #e7dfd5;
+            margin-top: 0.25rem;
+            opacity: 0.95;
+          }
           .block-container { padding: 1.6rem 2.2rem 8rem; max-width: 1180px; }
           h1, h2, h3 { font-weight: 560; letter-spacing: -0.03em; color: #171716; }
           [data-testid="stSidebar"] {
@@ -197,8 +228,9 @@ def render_sidebar() -> None:
     st.sidebar.markdown('<p class="section-label">Ask Ruia</p>', unsafe_allow_html=True)
     st.sidebar.caption("Instant doubts. Uses your saved plans and quiz misses.")
     if "chat_messages" not in st.session_state:
+        chat_rows = db.get_chat(24) if hasattr(db, "get_chat") else []
         st.session_state.chat_messages = [
-            {"role": row["role"], "content": row["content"]} for row in db.get_chat(24)
+            {"role": row["role"], "content": row["content"]} for row in chat_rows
         ]
     log = st.sidebar.container(height=260)
     with log:
@@ -880,8 +912,20 @@ def main() -> None:
     exams = db.query_tasks("exam", limit=200)
     quizzes = db.query_tasks("quiz_result", limit=200)
 
-    st.markdown("### Ruia")
-    st.caption("Student companion  ·  planner, exams, quizzes")
+    st.markdown(
+        f"""
+        <div class="brand-shell">
+          <div style="display:flex; align-items:center; gap:0.95rem;">
+            <img src="data:image/png;base64,{base64.b64encode(ICON_PATH.read_bytes()).decode('utf-8')}" style="width:52px; height:52px; border-radius:16px; object-fit:cover;" />
+            <div>
+              <div class="brand-title">{APP_NAME}</div>
+              <div class="brand-tag">{APP_TAGLINE}</div>
+            </div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     m1, m2, m3 = st.columns(3)
     m1.metric("Saved plans", len(grouped_plan_batches(plans)))

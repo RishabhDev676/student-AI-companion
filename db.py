@@ -160,10 +160,25 @@ def update_task_status(task_id: int, status: str) -> None:
         conn.close()
 
 
+def _ensure_chat_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.commit()
+
+
 def add_chat(role: str, content: str) -> None:
     ts = _now()
     conn = get_conn()
     try:
+        _ensure_chat_table(conn)
         conn.execute(
             "INSERT INTO chat_messages (role, content, created_at) VALUES (?, ?, ?)",
             (role, content, ts),
@@ -174,11 +189,19 @@ def add_chat(role: str, content: str) -> None:
 
 
 def get_chat(limit: int = 40) -> list[sqlite3.Row]:
-    conn = get_conn()
-    try:
-        rows = conn.execute(
-            "SELECT * FROM chat_messages ORDER BY id DESC LIMIT ?", (limit,)
-        ).fetchall()
-        return list(reversed(rows))
-    finally:
-        conn.close()
+    for attempt in range(2):
+        conn = get_conn()
+        try:
+            _ensure_chat_table(conn)
+            rows = conn.execute(
+                "SELECT * FROM chat_messages ORDER BY id DESC LIMIT ?", (limit,)
+            ).fetchall()
+            return list(reversed(rows))
+        except sqlite3.OperationalError:
+            if attempt == 0:
+                init_db()
+                continue
+            return []
+        finally:
+            conn.close()
+    return []

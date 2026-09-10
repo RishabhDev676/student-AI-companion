@@ -30,9 +30,11 @@ class DbTests(unittest.TestCase):
         self.assertTrue(task_id > 0)
         rows = db.query_tasks("quiz_result")
         self.assertEqual(len(rows), 1)
+        self.assertTrue(hasattr(db, "get_chat"))
         db.add_chat("user", "What is entropy?")
         chat = db.get_chat()
         self.assertEqual(chat[0]["content"], "What is entropy?")
+        self.assertEqual(chat[0]["role"], "user")
 
 
 class SecurityTests(unittest.TestCase):
