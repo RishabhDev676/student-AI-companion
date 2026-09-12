@@ -243,8 +243,8 @@ APP_CSS = """
     color: var(--text-primary) !important;
   }
   h4, h5, h6 { color: var(--text-primary) !important; }
-  p { color: var(--text-secondary) !important; }
-  .stMarkdown p { color: var(--text-secondary) !important; }
+  p { color: var(--text-secondary); }
+  .stMarkdown p { color: var(--text-secondary); }
 
   /* ─── ANIMATIONS ─────────────────────────────────────────────── */
   @keyframes fadeUp {
@@ -329,14 +329,25 @@ APP_CSS = """
     color: #FFFFFF !important;
     border: none !important;
     border-radius: var(--radius-sm) !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
     letter-spacing: -0.01em !important;
-    box-shadow: 0 4px 20px rgba(124,58,237,0.4), 0 0 0 0 rgba(124,58,237,0) !important;
+    box-shadow: 0 4px 20px rgba(124,58,237,0.4) !important;
     transition: all 0.25s ease !important;
+    padding: 0.65rem 1.25rem !important;
+  }
+  div[data-testid="stFormSubmitButton"] button *,
+  div[data-testid="stFormSubmitButton"] button p,
+  div[data-testid="stFormSubmitButton"] button span,
+  div[data-testid="stFormSubmitButton"] button div {
+    color: #FFFFFF !important;
+    font-weight: 800 !important;
+    font-size: 1rem !important;
+    letter-spacing: -0.01em !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
   }
   div[data-testid="stFormSubmitButton"] button:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 8px 28px rgba(124,58,237,0.6), 0 0 40px rgba(124,58,237,0.25) !important;
+    box-shadow: 0 8px 28px rgba(124,58,237,0.6), 0 0 40px rgba(124,58,237,0.3) !important;
     filter: brightness(1.1) !important;
   }
   div[data-testid="stFormSubmitButton"] button:active {
@@ -347,32 +358,53 @@ APP_CSS = """
   .stButton > button {
     background: var(--surface) !important;
     border: 1px solid var(--border) !important;
-    color: var(--text-secondary) !important;
+    color: var(--text-primary) !important;
     border-radius: var(--radius-sm) !important;
     font-weight: 600 !important;
     transition: all 0.2s ease !important;
+  }
+  .stButton > button *,
+  .stButton > button p,
+  .stButton > button span {
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
   }
   .stButton > button:hover {
     background: var(--surface2) !important;
     border-color: var(--violet) !important;
-    color: #C4B5FD !important;
-    box-shadow: 0 0 16px rgba(124,58,237,0.2) !important;
+    box-shadow: 0 0 16px rgba(124,58,237,0.25) !important;
     transform: translateY(-1px) !important;
+  }
+  .stButton > button:hover *,
+  .stButton > button:hover p,
+  .stButton > button:hover span {
+    color: #FFFFFF !important;
   }
 
   /* Download buttons */
   [data-testid="stDownloadButton"] button {
-    background: linear-gradient(135deg, rgba(6,182,212,0.15), rgba(79,70,229,0.15)) !important;
-    border: 1px solid rgba(6,182,212,0.4) !important;
+    background: linear-gradient(135deg, rgba(6,182,212,0.18), rgba(79,70,229,0.18)) !important;
+    border: 1px solid rgba(6,182,212,0.5) !important;
     color: #67E8F9 !important;
     border-radius: var(--radius-sm) !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
     transition: all 0.2s ease !important;
   }
+  [data-testid="stDownloadButton"] button *,
+  [data-testid="stDownloadButton"] button p,
+  [data-testid="stDownloadButton"] button span {
+    color: #67E8F9 !important;
+    font-weight: 700 !important;
+  }
   [data-testid="stDownloadButton"] button:hover {
-    background: linear-gradient(135deg, rgba(6,182,212,0.25), rgba(79,70,229,0.25)) !important;
+    background: linear-gradient(135deg, rgba(6,182,212,0.3), rgba(79,70,229,0.3)) !important;
     box-shadow: var(--shadow-glow-cyan) !important;
     transform: translateY(-1px) !important;
+  }
+  [data-testid="stDownloadButton"] button:hover *,
+  [data-testid="stDownloadButton"] button:hover p,
+  [data-testid="stDownloadButton"] button:hover span {
+    color: #FFFFFF !important;
   }
 
   /* ─── TABS ────────────────────────────────────────────────────── */
@@ -380,32 +412,98 @@ APP_CSS = """
     background: var(--surface) !important;
     border-radius: var(--radius-md) !important;
     border: 1px solid var(--border) !important;
-    padding: 4px !important;
-    gap: 4px !important;
+    padding: 6px !important;
+    gap: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
     margin-bottom: 1.5rem !important;
+    position: relative !important;
   }
-  [data-testid="stTabs"] button[role="tab"] {
+  [data-testid="stTabs"] [role="tablist"]::after {
+    display: none !important;
+  }
+  /* Remove default bottom underline/indicator */
+  [data-testid="stTabs"] .react-aria-SelectionIndicator,
+  [data-testid="stTabs"] [class*="SelectionIndicator"],
+  [data-testid="stTabs"] [data-baseweb="tab-highlight"],
+  [data-testid="stTabs"] [data-baseweb="tab-border"] {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
+  /* All Tabs (Individual Pills) */
+  [data-testid="stTab"],
+  [data-testid="stTabs"] [role="tab"] {
     border-radius: var(--radius-sm) !important;
-    color: var(--text-muted) !important;
-    font-weight: 600 !important;
-    transition: all 0.2s ease !important;
-    padding: 0.5rem 1rem !important;
-  }
-  [data-testid="stTabs"] button[role="tab"]:hover {
     color: var(--text-secondary) !important;
+    font-weight: 600 !important;
+    font-size: 0.92rem !important;
+    padding: 0.6rem 1.2rem !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    height: auto !important;
+    min-height: 2.4rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.4rem !important;
+  }
+  [data-testid="stTab"] *,
+  [data-testid="stTab"] p,
+  [data-testid="stTab"] span,
+  [data-testid="stTabs"] [role="tab"] *,
+  [data-testid="stTabs"] [role="tab"] p,
+  [data-testid="stTabs"] [role="tab"] span {
+    color: var(--text-secondary) !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+    transition: color 0.2s ease !important;
+  }
+  [data-testid="stTab"]:hover,
+  [data-testid="stTabs"] [role="tab"]:hover {
     background: var(--surface2) !important;
+    border-color: rgba(124, 58, 237, 0.3) !important;
   }
-  [data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-    background: var(--grad-main) !important;
+  [data-testid="stTab"]:hover *,
+  [data-testid="stTab"]:hover p,
+  [data-testid="stTab"]:hover span,
+  [data-testid="stTabs"] [role="tab"]:hover *,
+  [data-testid="stTabs"] [role="tab"]:hover p,
+  [data-testid="stTabs"] [role="tab"]:hover span {
     color: #FFFFFF !important;
-    box-shadow: 0 4px 16px rgba(124,58,237,0.4) !important;
   }
+
+  /* Selected / Active Tab */
+  [data-testid="stTab"][aria-selected="true"],
+  [data-testid="stTab"][data-selected="true"],
+  [data-testid="stTabs"] [role="tab"][aria-selected="true"],
+  [data-testid="stTabs"] [role="tab"][data-selected="true"] {
+    background: var(--grad-main) !important;
+    border-color: rgba(124, 58, 237, 0.5) !important;
+    box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4), 0 0 12px rgba(6, 182, 212, 0.2) !important;
+  }
+  [data-testid="stTab"][aria-selected="true"] *,
+  [data-testid="stTab"][aria-selected="true"] p,
+  [data-testid="stTab"][aria-selected="true"] span,
+  [data-testid="stTab"][data-selected="true"] *,
+  [data-testid="stTab"][data-selected="true"] p,
+  [data-testid="stTab"][data-selected="true"] span,
+  [data-testid="stTabs"] [role="tab"][aria-selected="true"] *,
+  [data-testid="stTabs"] [role="tab"][aria-selected="true"] p,
+  [data-testid="stTabs"] [role="tab"][aria-selected="true"] span,
+  [data-testid="stTabs"] [role="tab"][data-selected="true"] *,
+  [data-testid="stTabs"] [role="tab"][data-selected="true"] p,
+  [data-testid="stTabs"] [role="tab"][data-selected="true"] span {
+    color: #FFFFFF !important;
+    font-weight: 800 !important;
+  }
+
   [data-testid="stTabs"] [role="tabpanel"] {
     animation: fadeUp 0.3s ease-out forwards !important;
   }
-  /* Hide default bottom-border underline on tabs */
-  [data-testid="stTabs"] [data-baseweb="tab-highlight"] { display: none !important; }
-  [data-testid="stTabs"] [data-baseweb="tab-border"] { display: none !important; }
 
   /* ─── EXPANDERS ──────────────────────────────────────────────── */
   [data-testid="stExpander"] {
