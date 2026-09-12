@@ -1001,15 +1001,23 @@ def history_tab() -> None:
 def dashboard_tab() -> None:
     st.markdown("""
         <div style="
-            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
-            padding: 2rem;
-            border-radius: 20px;
+            background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 50%, #06B6D4 100%);
+            padding: 2.5rem 2rem;
+            border-radius: 24px;
             color: white;
             margin-bottom: 2rem;
-            box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 16px 48px -8px rgba(124,58,237,0.55), 0 0 0 1px rgba(124,58,237,0.3);
+            position: relative;
+            overflow: hidden;
         ">
-            <h1 style="color: white; margin: 0; font-size: 2.2rem; font-weight: 800;">Welcome back, Scholar! 🎓</h1>
-            <p style="color: #E0E7FF; font-size: 1.1rem; margin-top: 0.5rem; margin-bottom: 0;">
+            <div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;
+                        background:rgba(255,255,255,0.06);pointer-events:none;"></div>
+            <div style="position:absolute;bottom:-60px;left:30%;width:160px;height:160px;border-radius:50%;
+                        background:rgba(6,182,212,0.12);pointer-events:none;"></div>
+            <h1 style="color:white;margin:0;font-size:2.4rem;font-weight:900;letter-spacing:-0.04em;text-shadow:0 2px 12px rgba(0,0,0,0.2);">
+                Welcome back, Scholar! 🎓
+            </h1>
+            <p style="color:rgba(255,255,255,0.82);font-size:1.05rem;margin-top:0.6rem;margin-bottom:0;font-weight:500;">
                 Track your progress, test your skills, and master your subjects with AI-driven prep.
             </p>
         </div>
@@ -1036,10 +1044,12 @@ def dashboard_tab() -> None:
     with c1:
         streak_badge = "🌱 Beginner" if streak < 3 else ("🔥 On Fire!" if streak < 7 else "⚡ Unstoppable")
         st.markdown(f"""
-        <div class="day-card" style="text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100%;">
-            <div style="font-size: 2rem; margin-bottom: 0.2rem;">🔥</div>
-            <div style="font-size: 1.8rem; font-weight: 800; color: #1E293B;">{streak} Days</div>
-            <div style="color: #64748B; font-size: 0.85rem; font-weight: 600;">{streak_badge}</div>
+        <div class="day-card" style="text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;gap:0.3rem;">
+            <div style="font-size:2.4rem;">🔥</div>
+            <div style="font-size:2rem;font-weight:900;color:#F1F5F9;letter-spacing:-0.04em;">{streak} <span style="font-size:1rem;font-weight:600;color:#94A3B8;">days</span></div>
+            <div style="background:rgba(245,158,11,0.15);color:#FCD34D;border:1px solid rgba(245,158,11,0.3);border-radius:999px;padding:0.2rem 0.75rem;font-size:0.78rem;font-weight:700;">
+                {streak_badge}
+            </div>
         </div>
         """, unsafe_allow_html=True)
     with c2:
@@ -1047,10 +1057,10 @@ def dashboard_tab() -> None:
     with c3:
         next_exam_text = ctx.get("next_exam") or "No upcoming exams"
         st.markdown(f"""
-        <div class="day-card" style="text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100%;">
-            <div style="font-size: 2rem; margin-bottom: 0.2rem;">📅</div>
-            <div style="font-size: 1.1rem; font-weight: 700; color: #1E293B;">Next Target</div>
-            <div style="color: #64748B; font-size: 0.85rem; margin-top: 4px;">{next_exam_text}</div>
+        <div class="day-card" style="text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;gap:0.3rem;">
+            <div style="font-size:2.4rem;">📅</div>
+            <div style="font-size:1rem;font-weight:800;color:#C4B5FD;letter-spacing:-0.02em;">Next Target</div>
+            <div style="color:#94A3B8;font-size:0.85rem;margin-top:2px;font-weight:500;">{next_exam_text}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1081,9 +1091,9 @@ def dashboard_tab() -> None:
         weak = ctx.get("weak_topics") or ctx.get("last_quiz_missed_topics")
         if weak and weak != "none":
             st.markdown(f"""
-            <div class="day-card" style="border-left: 4px solid #EF4444;">
-                <p style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #DC2626;">Focus Areas from Quizzes:</p>
-                <p style="margin: 0.5rem 0 0 0; color: #475569;">{weak}</p>
+            <div class="day-card" style="border-left: 4px solid #F43F5E;">
+                <p style="margin:0;font-size:0.92rem;font-weight:700;color:#FCA5A5;letter-spacing:0.02em;">FOCUS AREAS FROM QUIZZES</p>
+                <p style="margin:0.5rem 0 0 0;color:#94A3B8;font-size:0.95rem;">{weak}</p>
             </div>
             """, unsafe_allow_html=True)
             st.button("Generate a Quiz on These", on_click=go_to_page, args=("Quizzes",), key="quiz_from_dash")
