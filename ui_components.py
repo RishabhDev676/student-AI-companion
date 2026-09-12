@@ -11,7 +11,7 @@ import security
 # Premium dark-vibrant design — max colour impact via CSS injection
 APP_CSS = """
 <style>
-  @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+  @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block");
 
   /* ─── TOKENS ─────────────────────────────────────────────────── */
   :root {
@@ -51,11 +51,32 @@ APP_CSS = """
     --shadow-hover: 0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.4);
   }
 
-  /* ─── GLOBAL ─────────────────────────────────────────────────── */
+  /* ─── GLOBAL TYPOGRAPHY ──────────────────────────────────────── */
   html, body, [data-testid="stAppViewContainer"], .stApp, .stMarkdown,
-  p, h1, h2, h3, h4, h5, h6, span, label, div {
+  p, h1, h2, h3, h4, h5, h6, input, textarea, select {
     font-family: "Inter", "Space Grotesk", ui-sans-serif, system-ui, sans-serif !important;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── MATERIAL ICONS (CRITICAL: preserve icon font against overrides) ── */
+  [data-testid="stIconMaterial"],
+  .material-symbols-rounded,
+  [translate="no"],
+  span:has(> [data-testid="stIconMaterial"]),
+  i.material-icons {
+    font-family: "Material Symbols Rounded", sans-serif !important;
+    font-weight: normal !important;
+    font-style: normal !important;
+    font-size: 1.25rem !important;
+    line-height: 1 !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+    display: inline-block !important;
+    white-space: nowrap !important;
+    word-wrap: normal !important;
+    direction: ltr !important;
+    -webkit-font-smoothing: antialiased !important;
+    vertical-align: middle !important;
   }
 
   .stApp {
@@ -88,7 +109,9 @@ APP_CSS = """
   /* Sidebar toggle buttons (expand & collapse) */
   [data-testid="stSidebarCollapseButton"],
   [data-testid="stExpandSidebarButton"] {
-    display: flex !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     visibility: visible !important;
     opacity: 1 !important;
     z-index: 999999 !important;
@@ -98,7 +121,16 @@ APP_CSS = """
     background: #1E2340 !important;
     color: #F1F5F9 !important;
     border: 1px solid #353B62 !important;
-    border-radius: 10px !important;
+    border-radius: 8px !important;
+    width: 2rem !important;
+    height: 2rem !important;
+    min-width: 2rem !important;
+    min-height: 2rem !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
     box-shadow: 0 4px 14px rgba(0,0,0,0.3) !important;
     transition: all 0.2s ease !important;
   }
@@ -110,14 +142,14 @@ APP_CSS = """
     box-shadow: 0 0 16px rgba(124, 58, 237, 0.5) !important;
     transform: scale(1.05) !important;
   }
-  [data-testid="stSidebarCollapseButton"] button svg,
-  [data-testid="stExpandSidebarButton"] button svg {
-    fill: #C4B5FD !important;
+  [data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"],
+  [data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"] {
+    font-family: "Material Symbols Rounded", sans-serif !important;
+    font-size: 1.25rem !important;
     color: #C4B5FD !important;
   }
-  [data-testid="stSidebarCollapseButton"] button:hover svg,
-  [data-testid="stExpandSidebarButton"] button:hover svg {
-    fill: #FFFFFF !important;
+  [data-testid="stSidebarCollapseButton"] button:hover [data-testid="stIconMaterial"],
+  [data-testid="stExpandSidebarButton"] button:hover [data-testid="stIconMaterial"] {
     color: #FFFFFF !important;
   }
 
@@ -392,6 +424,14 @@ APP_CSS = """
   [data-testid="stExpander"] summary {
     color: var(--text-secondary) !important;
     font-weight: 600 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+  }
+  [data-testid="stExpander"] summary [data-testid="stIconMaterial"] {
+    font-family: "Material Symbols Rounded", sans-serif !important;
+    font-size: 1.25rem !important;
+    color: var(--violet) !important;
   }
 
   /* ─── METRICS ────────────────────────────────────────────────── */
