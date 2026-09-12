@@ -11,6 +11,7 @@ from uuid import uuid4
 
 import pandas as pd
 import streamlit as st
+import altair as alt
 
 import analytics
 import db
@@ -18,6 +19,7 @@ import security
 from ai_service import AIError, call_ai, keys_configured, remember_insights
 from ui_components import (
     activity_streak,
+    circular_progress,
     empty_state,
     inject_css,
     metric_row,
@@ -69,7 +71,15 @@ MEMORY_LABELS = {
 # - Branding + student snapshot stay visible while switching workspaces.
 # - Four study tools plus a dedicated tutor view (chat needs full width).
 # - Multipage files would split a single-script app without a real gain.
-NAV_ITEMS = ("Planner", "Exams", "Quizzes", "Tutor", "History")
+NAV_ITEMS = ("Dashboard", "Planner", "Exams", "Quizzes", "Tutor", "History")
+
+
+def go_to_page(page: str) -> None:
+    st.session_state.current_page = page
+
+
+def back_to_dashboard(key_suffix: str) -> None:
+    st.button("← Back to Dashboard", key=f"back_{key_suffix}", on_click=go_to_page, args=("Dashboard",))
 
 
 def show_ai_error(exc: Exception) -> None:
@@ -191,6 +201,9 @@ def ensure_chat_state() -> None:
 
 
 def render_sidebar() -> str:
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = "Dashboard"
+
     with st.sidebar:
         brand_cols = st.columns([1, 4])
         with brand_cols[0]:
@@ -206,7 +219,7 @@ def render_sidebar() -> str:
             )
 
         st.divider()
-        page = st.radio("Workspace", NAV_ITEMS, label_visibility="collapsed")
+        page = st.radio("Workspace", NAV_ITEMS, key="current_page", label_visibility="collapsed")
 
         st.divider()
         section_header("Snapshot", "Student context")
@@ -238,7 +251,7 @@ def render_sidebar() -> str:
 # ---------------------------------------------------------------------------
 def study_planner_tab() -> None:
     section_header("Study planner", "Seven-day plan")
-    create, library = st.columns([0.42, 0.58], gap="large")
+    create, library = st.tabs(["✨ Create New Plan", "📚 My Library"])
 
     with create:
         section_header("New plan", "Inputs")
@@ -394,7 +407,7 @@ def study_planner_tab() -> None:
 # ---------------------------------------------------------------------------
 def exam_tracker_tab() -> None:
     section_header("Exam tracker", "Upcoming and completed")
-    create, records = st.columns([0.4, 0.6], gap="large")
+    create, records = st.tabs(["➕ Add Exam", "📋 Exam Records"])
 
     with create:
         section_header("Add exam", "Inputs")
@@ -521,7 +534,7 @@ def _quiz_results_panel(
 
 def quiz_generator_tab() -> None:
     section_header("Quiz generator", "Practice MCQs")
-    create, records = st.columns([0.55, 0.45], gap="large")
+    create, records = st.tabs(["🎯 New Quiz", "📈 Past Attempts"])
 
     with create:
         section_header("New quiz", "Inputs")
@@ -766,23 +779,49 @@ def history_tab() -> None:
     with left:
         st.caption("Quiz scores")
         if quizzes_chrono:
-            score_map = {
-                f"{i+1}. {row['subject'] or 'Quiz'}": float(row["confidence_score"] or 0)
+            df_quizzes = pd.DataFrame([
+                {
+                    "Quiz": f"{i+1}. {row['subject'] or 'Quiz'}",
+                    "Score": float(row["confidence_score"] or 0),
+                    "Date": pretty_dt(row["created_at"])
+                }
                 for i, row in enumerate(quizzes_chrono)
-            }
-            st.bar_chart(score_map, use_container_width=True)
+            ])
+            chart = alt.Chart(df_quizzes).mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(
+                x=alt.X("Quiz:N", sort=None, title=None),
+                y=alt.Y("Score:Q", scale=alt.Scale(domain=[0, 100])),
+                color=alt.Color("Score:Q", scale=alt.Scale(scheme="purples"), legend=None),
+                tooltip=["Quiz", "Score", "Date"]
+            ).properties(height=240)
+            st.altair_chart(chart, use_container_width=True)
         else:
             st.caption("Take a quiz to see your score trend.")
+
         if snapshot["quiz_scores"]:
             quiz_df = pd.DataFrame(snapshot["quiz_scores"])
-            st.line_chart(quiz_df.set_index("date")["score"])
+            line_chart = alt.Chart(quiz_df).mark_line(point=True, color="#6366F1").encode(
+                x=alt.X("date:T", title="Date"),
+                y=alt.Y("score:Q", scale=alt.Scale(domain=[0, 100]), title="Score (%)"),
+                tooltip=["date:T", "score:Q"]
+            ).properties(height=200)
+            st.altair_chart(line_chart, use_container_width=True)
+
         st.caption("Exam confidence")
         if exams:
-            conf_map = {
-                (row["subject"] or row["title"] or f"Exam {row['id']}"): float(row["confidence_score"] or 0)
+            df_exams = pd.DataFrame([
+                {
+                    "Exam": row["subject"] or row["title"] or f"Exam {row['id']}",
+                    "Confidence": float(row["confidence_score"] or 0)
+                }
                 for row in exams
-            }
-            st.bar_chart(conf_map, use_container_width=True)
+            ])
+            chart = alt.Chart(df_exams).mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6).encode(
+                x=alt.X("Exam:N", sort=None, title=None),
+                y=alt.Y("Confidence:Q", scale=alt.Scale(domain=[0, 10])),
+                color=alt.Color("Confidence:Q", scale=alt.Scale(scheme="tealblues"), legend=None),
+                tooltip=["Exam", "Confidence"]
+            ).properties(height=240)
+            st.altair_chart(chart, use_container_width=True)
         else:
             st.caption("Add exams to compare readiness.")
 
@@ -795,16 +834,33 @@ def history_tab() -> None:
                 if topic and topic != "none":
                     counts[str(topic)] += 1
         if counts:
-            st.bar_chart(dict(counts), use_container_width=True)
+            df_counts = pd.DataFrame(list(counts.items()), columns=["Topic", "Count"])
+            chart = alt.Chart(df_counts).mark_bar(cornerRadiusTopRight=6, cornerRadiusBottomRight=6).encode(
+                x=alt.X("Count:Q", title="Missed Count"),
+                y=alt.Y("Topic:N", sort="-x", title=None),
+                color=alt.Color("Count:Q", scale=alt.Scale(scheme="reds"), legend=None),
+                tooltip=["Topic", "Count"]
+            ).properties(height=240)
+            st.altair_chart(chart, use_container_width=True)
         else:
             st.caption("Missed quiz topics will appear here.")
+
         st.caption("Activity mix")
-        mix = {
-            "Plans": len(grouped_plan_batches(plans)),
-            "Exams": len(exams),
-            "Quizzes": len(quizzes),
-        }
-        st.bar_chart(mix, use_container_width=True)
+        mix = [
+            {"Activity": "Plans", "Count": len(grouped_plan_batches(plans))},
+            {"Activity": "Exams", "Count": len(exams)},
+            {"Activity": "Quizzes", "Count": len(quizzes)}
+        ]
+        df_mix = pd.DataFrame(mix)
+        if df_mix["Count"].sum() > 0:
+            chart = alt.Chart(df_mix).mark_arc(innerRadius=50).encode(
+                theta=alt.Theta(field="Count", type="quantitative"),
+                color=alt.Color(field="Activity", type="nominal", scale=alt.Scale(scheme="category10")),
+                tooltip=["Activity", "Count"]
+            ).properties(height=240)
+            st.altair_chart(chart, use_container_width=True)
+        else:
+            st.caption("No activity logged yet.")
 
     st.divider()
     section_header("Plans", "Table")
@@ -942,11 +998,109 @@ def history_tab() -> None:
         st.dataframe(chat_df, use_container_width=True, hide_index=True)
 
 
+def dashboard_tab() -> None:
+    st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+            padding: 2rem;
+            border-radius: 20px;
+            color: white;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
+        ">
+            <h1 style="color: white; margin: 0; font-size: 2.2rem; font-weight: 800;">Welcome back, Scholar! 🎓</h1>
+            <p style="color: #E0E7FF; font-size: 1.1rem; margin-top: 0.5rem; margin-bottom: 0;">
+                Track your progress, test your skills, and master your subjects with AI-driven prep.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    ctx = db.get_all_context()
+    all_tasks = db.query_tasks(limit=200)
+    exams = db.query_tasks("exam", limit=10)
+    quizzes = db.query_tasks("quiz_result", limit=10)
+    
+    streak = activity_streak(all_tasks)
+    
+    # Calculate average score
+    avg_score = 0
+    if quizzes:
+        valid_scores = [float(q["confidence_score"]) for q in quizzes if q.get("confidence_score") is not None]
+        if valid_scores:
+            avg_score = int(sum(valid_scores) / len(valid_scores))
+            
+    upcoming = [e for e in exams if e["status"] != "done"]
+
+    # Highlights / Stats row
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        streak_badge = "🌱 Beginner" if streak < 3 else ("🔥 On Fire!" if streak < 7 else "⚡ Unstoppable")
+        st.markdown(f"""
+        <div class="day-card" style="text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+            <div style="font-size: 2rem; margin-bottom: 0.2rem;">🔥</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: #1E293B;">{streak} Days</div>
+            <div style="color: #64748B; font-size: 0.85rem; font-weight: 600;">{streak_badge}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with c2:
+        circular_progress(avg_score, "Avg Quiz Score", color="#10B981" if avg_score >= 70 else "#F59E0B")
+    with c3:
+        next_exam_text = ctx.get("next_exam") or "No upcoming exams"
+        st.markdown(f"""
+        <div class="day-card" style="text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+            <div style="font-size: 2rem; margin-bottom: 0.2rem;">📅</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: #1E293B;">Next Target</div>
+            <div style="color: #64748B; font-size: 0.85rem; margin-top: 4px;">{next_exam_text}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("### Quick Actions")
+    cols = st.columns(4)
+    with cols[0]:
+        st.button("📅 Plan My Week", use_container_width=True, on_click=go_to_page, args=("Planner",))
+    with cols[1]:
+        st.button("📝 Manage Exams", use_container_width=True, on_click=go_to_page, args=("Exams",))
+    with cols[2]:
+        st.button("🎯 Practice Quiz", use_container_width=True, on_click=go_to_page, args=("Quizzes",))
+    with cols[3]:
+        st.button("💬 Ask AI Tutor", use_container_width=True, on_click=go_to_page, args=("Tutor",))
+
+    st.markdown("---")
+    
+    col1, col2 = st.columns(2, gap="large")
+    with col1:
+        st.markdown("#### ⏳ Urgent Deadlines")
+        if upcoming:
+            for ex in upcoming[:3]:
+                render_exam_card(ex, completed=False)
+        else:
+            empty_state("All clear!", "No upcoming exams scheduled.", "🎉")
+            
+    with col2:
+        st.markdown("#### 🧠 Needs Practice")
+        weak = ctx.get("weak_topics") or ctx.get("last_quiz_missed_topics")
+        if weak and weak != "none":
+            st.markdown(f"""
+            <div class="day-card" style="border-left: 4px solid #EF4444;">
+                <p style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #DC2626;">Focus Areas from Quizzes:</p>
+                <p style="margin: 0.5rem 0 0 0; color: #475569;">{weak}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            st.button("Generate a Quiz on These", on_click=go_to_page, args=("Quizzes",), key="quiz_from_dash")
+        else:
+            empty_state("Mastery Achieved", "No specific weak spots identified yet. Keep it up!", "⭐")
+
+
 def main() -> None:
     inject_css()
     page = render_sidebar()
 
-    if page == "Planner":
+    if page != "Dashboard":
+        back_to_dashboard("main_top")
+
+    if page == "Dashboard":
+        dashboard_tab()
+    elif page == "Planner":
         study_planner_tab()
     elif page == "Exams":
         exam_tracker_tab()
@@ -959,3 +1113,4 @@ def main() -> None:
 
 
 main()
+
