@@ -49,6 +49,7 @@ st.set_page_config(
     page_title=APP_NAME,
     page_icon=str(ICON_PATH) if ICON_PATH.exists() else "✦",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 db.init_db()
 

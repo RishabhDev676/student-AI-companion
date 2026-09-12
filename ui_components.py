@@ -68,9 +68,58 @@ APP_CSS = """
     min-height: 100vh;
   }
 
-  [data-testid="stHeader"] { background: transparent !important; }
-  .stAppDeployButton, [data-testid="stToolbar"], #MainMenu { display: none !important; }
+  /* ─── HEADER & TOOLBAR ───────────────────────────────────────── */
+  [data-testid="stHeader"] {
+    background: transparent !important;
+    z-index: 100 !important;
+  }
+  [data-testid="stToolbar"] {
+    background: transparent !important;
+    visibility: visible !important;
+  }
+  .stAppDeployButton,
+  #MainMenu,
+  [data-testid="stToolbarActions"],
+  [data-testid="stDecoration"] {
+    display: none !important;
+  }
   footer { visibility: hidden; }
+
+  /* Sidebar toggle buttons (expand & collapse) */
+  [data-testid="stSidebarCollapseButton"],
+  [data-testid="stExpandSidebarButton"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 999999 !important;
+  }
+  [data-testid="stSidebarCollapseButton"] button,
+  [data-testid="stExpandSidebarButton"] button {
+    background: #1E2340 !important;
+    color: #F1F5F9 !important;
+    border: 1px solid #353B62 !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3) !important;
+    transition: all 0.2s ease !important;
+  }
+  [data-testid="stSidebarCollapseButton"] button:hover,
+  [data-testid="stExpandSidebarButton"] button:hover {
+    background: #7C3AED !important;
+    border-color: #7C3AED !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 0 16px rgba(124, 58, 237, 0.5) !important;
+    transform: scale(1.05) !important;
+  }
+  [data-testid="stSidebarCollapseButton"] button svg,
+  [data-testid="stExpandSidebarButton"] button svg {
+    fill: #C4B5FD !important;
+    color: #C4B5FD !important;
+  }
+  [data-testid="stSidebarCollapseButton"] button:hover svg,
+  [data-testid="stExpandSidebarButton"] button:hover svg {
+    fill: #FFFFFF !important;
+    color: #FFFFFF !important;
+  }
 
   .block-container {
     padding: 2rem 2.5rem 5rem !important;
@@ -84,24 +133,33 @@ APP_CSS = """
   ::-webkit-scrollbar-thumb:hover { background: var(--violet); }
 
   /* ─── SIDEBAR ────────────────────────────────────────────────── */
+  [data-testid="stSidebar"],
+  [data-testid="stSidebarContent"] {
+    background: #12152A !important;
+    color: var(--text-primary) !important;
+  }
   [data-testid="stSidebar"] {
-    background: rgba(18, 21, 42, 0.95) !important;
-    backdrop-filter: blur(20px) !important;
     border-right: 1px solid var(--border) !important;
     box-shadow: 4px 0 24px rgba(0,0,0,0.4) !important;
   }
-  [data-testid="stSidebar"] > div:first-child { padding-top: 1.5rem; }
+  [data-testid="stSidebarUserContent"] {
+    padding-top: 1.25rem !important;
+    padding-bottom: 2rem !important;
+  }
 
   [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
     color: var(--text-secondary) !important;
   }
 
   /* Sidebar nav pills */
-  [data-testid="stSidebar"] [data-testid="stRadio"] > label { display: none; }
+  [data-testid="stSidebar"] [data-testid="stRadio"] > label { display: none !important; }
   [data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] {
-    gap: 0.25rem;
+    gap: 0.35rem;
     display: flex;
     flex-direction: column;
+  }
+  [data-testid="stSidebar"] [data-testid="stRadio"] [data-testid="stRadioOption"] {
+    margin-bottom: 0.1rem;
   }
   [data-testid="stSidebar"] [data-testid="stRadio"] label {
     background: transparent !important;
@@ -111,28 +169,33 @@ APP_CSS = """
     transition: all 0.2s ease !important;
     cursor: pointer !important;
     color: var(--text-secondary) !important;
+    display: flex !important;
+    align-items: center !important;
   }
+  [data-testid="stSidebar"] [data-testid="stRadio"] label p,
   [data-testid="stSidebar"] [data-testid="stRadio"] label span {
     color: var(--text-secondary) !important;
+    font-weight: 600 !important;
+    font-size: 0.92rem !important;
   }
   [data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
-    background: rgba(124,58,237,0.12) !important;
+    background: rgba(124,58,237,0.14) !important;
     border-color: rgba(124,58,237,0.3) !important;
     transform: translateX(4px) !important;
-    color: var(--text-primary) !important;
   }
+  [data-testid="stSidebar"] [data-testid="stRadio"] label:hover p,
   [data-testid="stSidebar"] [data-testid="stRadio"] label:hover span {
-    color: var(--text-primary) !important;
+    color: #FFFFFF !important;
   }
   [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
-    background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(79,70,229,0.15)) !important;
-    border-color: rgba(124,58,237,0.5) !important;
-    box-shadow: 0 0 16px rgba(124,58,237,0.2), inset 0 0 0 1px rgba(124,58,237,0.2) !important;
-    color: #C4B5FD !important;
+    background: linear-gradient(135deg, rgba(124,58,237,0.25), rgba(79,70,229,0.2)) !important;
+    border-color: rgba(124,58,237,0.55) !important;
+    box-shadow: 0 0 16px rgba(124,58,237,0.25), inset 0 0 0 1px rgba(124,58,237,0.25) !important;
   }
+  [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p,
   [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) span {
     color: #C4B5FD !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
   }
 
   /* Sidebar divider */
