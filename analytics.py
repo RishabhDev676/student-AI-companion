@@ -1,4 +1,4 @@
-"""Dashboard data helpers for the Ruia Student Companion app."""
+"""Dashboard data helpers for the ApexStudy app."""
 
 from __future__ import annotations
 

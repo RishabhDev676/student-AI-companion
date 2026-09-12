@@ -1,4 +1,4 @@
-"""Ruia AI Student Companion — Study Planner, Exam Tracker, Quiz Generator."""
+"""ApexStudy AI — Study Planner, Exam Tracker, Quiz Generator."""
 
 from __future__ import annotations
 
@@ -40,8 +40,8 @@ security = importlib.reload(security)
 
 ROOT = Path(__file__).resolve().parent
 ICON_PATH = ROOT / "icon.png"
-APP_NAME = "Ruia Pulse"
-APP_TAGLINE = "Planner · exams · quizzes · tutor"
+APP_NAME = "ApexStudy AI"
+APP_TAGLINE = "Elevate Your Learning · Planner · Exams · Quizzes · Tutor"
 
 # Wide layout: weekly plan grid, exam lists, and history tables need horizontal
 # room. CSS still caps the main column so lines stay readable on large screens.
@@ -163,7 +163,7 @@ def exams_markdown(exams: list) -> str:
 
 
 def export_everything() -> str:
-    parts = ["# Ruia records", ""]
+    parts = ["# ApexStudy records", ""]
     plans = grouped_plan_batches(db.query_tasks("plan_item", limit=200))
     parts.append("## Plans")
     if not plans:
@@ -210,7 +210,7 @@ def render_sidebar() -> str:
             if ICON_PATH.exists():
                 st.image(str(ICON_PATH), width=40)
             else:
-                st.markdown('<div class="brand-mark">R</div>', unsafe_allow_html=True)
+                st.markdown('<div class="brand-mark">A</div>', unsafe_allow_html=True)
         with brand_cols[1]:
             st.markdown(
                 f'<p class="brand-title">{APP_NAME}</p>'
@@ -279,7 +279,7 @@ def study_planner_tab() -> None:
                 try:
                     with st.spinner("Building your plan…"):
                         data = safe_ai(
-                            "You are a focused academic coach for a college student at Ruia. "
+                            "You are a focused academic coach helping students succeed. "
                             "Be specific and realistic. Prefer weaker topics first.",
                             user_prompt,
                             expect_json=True,
@@ -347,7 +347,7 @@ def study_planner_tab() -> None:
                 st.download_button(
                     "Download this plan",
                     data=st.session_state["last_plan_md"],
-                    file_name="ruia-study-plan.md",
+                    file_name="apexstudy-plan.md",
                     mime="text/markdown",
                     use_container_width=True,
                     key="dl_current_plan",
@@ -382,7 +382,7 @@ def study_planner_tab() -> None:
                     st.download_button(
                         "Download",
                         data=md,
-                        file_name=f"{security.safe_filename('ruia-plan-' + str(_batch))}.md",
+                        file_name=f"{security.safe_filename('apexstudy-plan-' + str(_batch))}.md",
                         mime="text/markdown",
                         key=f"dl_plan_{_batch}",
                     )
@@ -478,7 +478,7 @@ def exam_tracker_tab() -> None:
             st.download_button(
                 "Download exams",
                 data=exams_markdown(exams),
-                file_name="ruia-exams.md",
+                file_name="apexstudy-exams.md",
                 mime="text/markdown",
                 key="dl_exams",
             )
@@ -674,7 +674,7 @@ def quiz_generator_tab() -> None:
                     st.download_button(
                         "Download quiz",
                         data=quiz_markdown(row, details),
-                        file_name=f"{security.safe_filename(f'ruia-quiz-{row['id']}')}.md",
+                        file_name=f"{security.safe_filename(f'apexstudy-quiz-{row['id']}')}.md",
                         mime="text/markdown",
                         key=f"dl_quiz_{row['id']}",
                     )
@@ -691,7 +691,7 @@ def quiz_generator_tab() -> None:
 def tutor_tab() -> None:
     title_col, action_col = st.columns([0.82, 0.18], vertical_alignment="bottom")
     with title_col:
-        section_header("Tutor", "Ask Ruia")
+        section_header("Tutor", "Ask ApexStudy")
     with action_col:
         if st.button("Clear chat", key="clear_chat", help="Delete this chat history"):
             db.clear_chat()
@@ -714,7 +714,7 @@ def tutor_tab() -> None:
 
 
 def handle_chat_input() -> None:
-    prompt = st.chat_input("Ask Ruia a doubt…")
+    prompt = st.chat_input("Ask ApexStudy a question or doubt…")
     if not prompt:
         return
     prompt = security.clamp_text(prompt, security.MAX_CHAT)
@@ -724,9 +724,9 @@ def handle_chat_input() -> None:
     st.session_state.chat_messages.append({"role": "user", "content": prompt})
     db.add_chat("user", prompt)
     try:
-        with st.spinner("Ruia is thinking…"):
+        with st.spinner("ApexStudy is thinking…"):
             reply = safe_ai(
-                "You are Ruia, a calm, precise tutor. Solve the student's doubt clearly. "
+                "You are ApexStudy, a calm, precise, and supportive AI tutor. Solve the student's doubt clearly. "
                 "Use their saved weak topics and plans when relevant. Keep answers short, "
                 "with steps if it is a numerical or coding problem.",
                 prompt,
@@ -767,7 +767,7 @@ def history_tab() -> None:
     st.download_button(
         "Download everything",
         data=export_everything(),
-        file_name="ruia-records.md",
+        file_name="apexstudy-records.md",
         mime="text/markdown",
         key="dl_all",
     )
@@ -895,7 +895,7 @@ def history_tab() -> None:
                 st.download_button(
                     "Download",
                     data=plan_markdown(focus, details.get("summary") or "", rows_sorted, first["created_at"]),
-                    file_name=f"{security.safe_filename('ruia-plan-' + str(_batch))}.md",
+                    file_name=f"{security.safe_filename('apexstudy-plan-' + str(_batch))}.md",
                     mime="text/markdown",
                     key=f"hist_dl_plan_{_batch}",
                 )
@@ -908,7 +908,7 @@ def history_tab() -> None:
         st.download_button(
             "Download exams",
             data=exams_markdown(exams),
-            file_name="ruia-exams.md",
+            file_name="apexstudy-exams.md",
             mime="text/markdown",
             key="hist_dl_exams",
         )
@@ -967,7 +967,7 @@ def history_tab() -> None:
                 st.download_button(
                     "Download quiz",
                     data=quiz_markdown(row, details),
-                    file_name=f"ruia-quiz-{row['id']}.md",
+                    file_name=f"apexstudy-quiz-{row['id']}.md",
                     mime="text/markdown",
                     key=f"hist_dl_quiz_{row['id']}",
                 )

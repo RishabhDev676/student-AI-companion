@@ -22,7 +22,7 @@ def clamp_text(value: str | None, limit: int = MAX_TEXT) -> str:
 
 def safe_filename(name: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", name).strip(".-")
-    return (cleaned or "ruia")[:80]
+    return (cleaned or "apexstudy")[:80]
 
 
 def valid_context_key(key: str) -> bool:

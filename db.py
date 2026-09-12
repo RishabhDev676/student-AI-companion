@@ -7,7 +7,11 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-DB_PATH = Path(os.getenv("RUIA_DB_PATH", Path(__file__).resolve().parent / "ruia_companion.db"))
+_DEFAULT_DB = Path(__file__).resolve().parent / "apexstudy.db"
+_OLD_DB = Path(__file__).resolve().parent / "ruia_companion.db"
+if not _DEFAULT_DB.exists() and _OLD_DB.exists():
+    _DEFAULT_DB = _OLD_DB
+DB_PATH = Path(os.getenv("APEXSTUDY_DB_PATH", os.getenv("RUIA_DB_PATH", _DEFAULT_DB)))
 
 VALID_TASK_TYPES = ("plan_item", "exam", "quiz_result")
 
